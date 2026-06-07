@@ -1,0 +1,116 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id          Int            @id @default(autoincrement())
+  clerkId     String         @unique
+  name        String?
+  email       String         @unique
+  imageUrl    String?
+  isPremium   Boolean        @default(false)
+  createdAt   DateTime       @default(now())
+  updatedAt   DateTime       @updatedAt
+  templates   UserTemplate[]
+  transactions Transaction[]
+  photos      PhotoSession[]
+}
+
+model Template {
+  id          String           @id @default(cuid())
+  slug        String           @unique
+  name        String
+  description String?
+  category    TemplateCategory
+  tier        TemplateTier
+  price       Int              @default(0)
+  previewUrl  String?
+  configJson  Json             @default("{}")
+  isActive    Boolean          @default(true)
+  sortOrder   Int              @default(0)
+  createdAt   DateTime         @default(now())
+  updatedAt   DateTime         @updatedAt
+  unlockedBy  UserTemplate[]
+  sessions    PhotoSession[]
+}
+
+model UserTemplate {
+  id         String   @id @default(cuid())
+  userId     Int
+  templateId String
+  createdAt  DateTime @default(now())
+  user       User     @relation(fields: [userId], references: [id])
+  template   Template @relation(fields: [templateId], references: [id])
+
+  @@unique([userId, templateId])
+}
+
+model Transaction {
+  id            String            @id @default(cuid())
+  userId        Int
+  orderId       String            @unique
+  amount        Int
+  paymentMethod String?
+  status        TransactionStatus @default(PENDING)
+  type          TransactionType
+  templateIds   String[]          @default([])
+  midtransToken String?
+  paidAt        DateTime?
+  expiredAt     DateTime?
+  createdAt     DateTime          @default(now())
+  updatedAt     DateTime          @updatedAt
+  user          User              @relation(fields: [userId], references: [id])
+}
+
+model PhotoSession {
+  id            String        @id @default(cuid())
+  userId        Int?
+  templateId    String
+  resultUrl     String?
+  photoUrls     String[]      @default([])
+  downloadCount Int           @default(0)
+  status        SessionStatus @default(PENDING)
+  createdAt     DateTime      @default(now())
+  updatedAt     DateTime      @updatedAt
+  user          User?         @relation(fields: [userId], references: [id])
+  template      Template      @relation(fields: [templateId], references: [id])
+}
+
+enum TemplateCategory {
+  RETRO
+  MUSIC
+  CINEMA
+  KOREAN
+  MODERN
+  EDITORIAL
+  SOCIAL
+}
+
+enum TemplateTier {
+  FREE
+  PREMIUM
+}
+
+enum TransactionStatus {
+  PENDING
+  SUCCESS
+  FAILED
+  EXPIRED
+  CANCELLED
+}
+
+enum TransactionType {
+  SINGLE_TEMPLATE
+  ALL_TEMPLATES
+}
+
+enum SessionStatus {
+  PENDING
+  COMPLETED
+  DOWNLOADED
+}
